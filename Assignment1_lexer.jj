@@ -1,0 +1,252 @@
+PARSER_BEGIN(LexerTest) 
+    
+    class LexerTest {
+    	public static void main(String[] arg) 
+	throws ParseException, TokenMgrError, NumberFormatException
+	{
+	    LexerTest parser = new LexerTest(System.in);
+	    Start();
+        }
+    }
+
+PARSER_END(LexerTest)
+
+
+
+// reserved
+
+TOKEN 	: 	{<CHAR : "char">}
+TOKEN 	: 	{<ELSE : "else">}
+TOKEN 	: 	{<EXTERN : "extern">}
+TOKEN 	: 	{<IF : "if">}
+TOKEN 	: 	{<INT : "int">}
+TOKEN 	: 	{<RETURN : "return">}
+TOKEN 	: 	{<VOID : "void">}
+TOKEN 	: 	{<WHILE : "while">}
+
+// tokens
+
+TOKEN 	:	{<DIGIT : (["0"-"9"])>}
+TOKEN	:	{<ALPHABET : (["a"-"z"]|["A"-"Z"])|("_")>} 
+TOKEN 	:	{<INTEGER_CONSTANT : (<DIGIT>)+ >}
+TOKEN	:	{<IDENT : (<ALPHABET>)+ ((<ALPHABET>)|(<INTEGER_CONSTANT>))* >}
+TOKEN	:	{<NOTEQ  : "!=">}
+TOKEN	:	{<NOT : "!"   >}
+TOKEN	:	{<ANDAND : "&&">}
+TOKEN	:	{<OROR  : "||" >}
+TOKEN	:	{<LPAREN : "(" >}
+TOKEN	:	{<RPAREN : ")" >}
+TOKEN	:	{<MUL : "*"   >}
+TOKEN	:	{<PLUS : "+"  >}
+TOKEN	:	{<COMMA : "," >}
+TOKEN	:	{<MINUS :"-" >}
+TOKEN	:	{<DIV : "/"   >}
+TOKEN	:	{<SEMI : ";"  >}
+TOKEN	:	{<LTEQ : "<="  >}
+TOKEN	:	{<LT : "<"    >}
+TOKEN	:	{<EQEQ : "==" >}
+TOKEN	:	{<EQ  : "="   >}
+TOKEN	:	{<GTEQ : ">=" >}
+TOKEN	:	{<GT  : ">"  >}
+TOKEN	:	{<LBRACK : "[" >}
+TOKEN	:	{<RBRACK : "]" >}
+TOKEN	:	{<LBRACE : "{" >}
+TOKEN	:	{<RBRACE : "}" >}
+
+TOKEN	:	{<CHARACTER : ("\'")((~[])|("\\")(~[])   )("\'")  >}
+TOKEN	:	{<STRING : ("\"")(~[])+("\"")>}
+
+// blank
+TOKEN	:	{<NEWLINE : "\n">}
+TOKEN	:	{<WHITESPACE : "\r" | "\r\n" | "\t" | " ">}
+
+TOKEN	:	{<COMMENTLINE : ("//") (~["\n"])* ("\n") >}
+TOKEN	:	{<COMMENTLINES : ("/*") (~["*"])* "*" (~["/"](~["*"])*"*")* "/">}
+
+TOKEN	:	{<OTHERS : ~[]>}
+
+void Start() throws NumberFormatException : 
+{
+  Token t;
+}
+{
+  
+
+  (
+	t = <CHAR>
+	{
+	System.out.println(LexerTestConstants.tokenImage[t.kind] + ":"+t.image);
+	}
+	| t = <ELSE>
+	{
+	System.out.println(LexerTestConstants.tokenImage[t.kind] + ":"+t.image);
+	}
+	| t = <EXTERN>
+	{
+	System.out.println(LexerTestConstants.tokenImage[t.kind] + ":"+t.image);
+	}
+	| t = <IF>
+	{
+	System.out.println(LexerTestConstants.tokenImage[t.kind] + ":"+t.image);
+	}
+	| t = <INT>
+	{
+	System.out.println(LexerTestConstants.tokenImage[t.kind] + ":"+t.image);
+	}
+	| t = <RETURN>
+	{
+	System.out.println(LexerTestConstants.tokenImage[t.kind] + ":"+t.image);
+	}
+	| t = <VOID>
+	{
+	System.out.println(LexerTestConstants.tokenImage[t.kind] + ":"+t.image);
+	}
+	| t = <WHILE>
+	{
+	System.out.println(LexerTestConstants.tokenImage[t.kind] + ":"+t.image);
+	}
+	| t = <DIGIT>
+	{
+	System.out.println(LexerTestConstants.tokenImage[t.kind] + ":"+t.image);
+	}
+	| t = <ALPHABET>
+	{
+	System.out.println(LexerTestConstants.tokenImage[t.kind] + ":"+t.image);
+	}
+	| t = <INTEGER_CONSTANT>
+	{
+	System.out.println(LexerTestConstants.tokenImage[t.kind] + ":"+t.image);
+	}
+	| t = <IDENT>
+	{
+	System.out.println(LexerTestConstants.tokenImage[t.kind] + ":"+t.image);
+	}
+	| t = <NOTEQ>
+	{
+	System.out.println(LexerTestConstants.tokenImage[t.kind] + ":"+t.image);
+	}
+	| t = <NOT>
+	{
+	System.out.println(LexerTestConstants.tokenImage[t.kind] + ":"+t.image);
+	}
+	| t = <ANDAND>
+	{
+	System.out.println(LexerTestConstants.tokenImage[t.kind] + ":"+t.image);
+	}
+	| t = <OROR>
+	{
+	System.out.println(LexerTestConstants.tokenImage[t.kind] + ":"+t.image);
+	}
+	| t = <LPAREN>
+	{
+	System.out.println(LexerTestConstants.tokenImage[t.kind] + ":"+t.image);
+	}
+	| t = <RPAREN>
+	{
+	System.out.println(LexerTestConstants.tokenImage[t.kind] + ":"+t.image);
+	}
+	| t = <MUL>
+	{
+	System.out.println(LexerTestConstants.tokenImage[t.kind] + ":"+t.image);
+	}
+	| t = <PLUS>
+	{
+	System.out.println(LexerTestConstants.tokenImage[t.kind] + ":"+t.image);
+	}
+	| t = <COMMA>
+	{
+	System.out.println(LexerTestConstants.tokenImage[t.kind] + ":"+t.image);
+	}
+	| t = <MINUS>
+	{
+	System.out.println(LexerTestConstants.tokenImage[t.kind] + ":"+t.image);
+	}
+	| t = <DIV>
+	{
+	System.out.println(LexerTestConstants.tokenImage[t.kind] + ":"+t.image);
+	}
+	| t = <SEMI>
+	{
+	System.out.println(LexerTestConstants.tokenImage[t.kind] + ":"+t.image);
+	}
+	| t = <LTEQ>
+	{
+	System.out.println(LexerTestConstants.tokenImage[t.kind] + ":"+t.image);
+	}
+	| t = <LT>
+	{
+	System.out.println(LexerTestConstants.tokenImage[t.kind] + ":"+t.image);
+	}
+	| t = <EQEQ>
+	{
+	System.out.println(LexerTestConstants.tokenImage[t.kind] + ":"+t.image);
+	}
+	| t = <EQ>
+	{
+	System.out.println(LexerTestConstants.tokenImage[t.kind] + ":"+t.image);
+	}
+	| t = <GTEQ>
+	{
+	System.out.println(LexerTestConstants.tokenImage[t.kind] + ":"+t.image);
+	}
+	| t = <GT>
+	{
+	System.out.println(LexerTestConstants.tokenImage[t.kind] + ":"+t.image);
+	}
+	| t = <LBRACK>
+	{
+	System.out.println(LexerTestConstants.tokenImage[t.kind] + ":"+t.image);
+	}
+	| t = <RBRACK>
+	{
+	System.out.println(LexerTestConstants.tokenImage[t.kind] + ":"+t.image);
+	}
+	| t = <LBRACE>
+	{
+	System.out.println(LexerTestConstants.tokenImage[t.kind] + ":"+t.image);
+	}
+	| t = <RBRACE>
+	{
+	System.out.println(LexerTestConstants.tokenImage[t.kind] + ":"+t.image);
+	}
+	| t = <CHARACTER>
+	{
+	System.out.println(LexerTestConstants.tokenImage[t.kind] + ":"+t.image);
+	}
+	| t = <STRING>
+	{
+	System.out.println(LexerTestConstants.tokenImage[t.kind] + ":"+t.image);
+	}
+
+
+
+	| t = <COMMENTLINE>
+	{
+	System.out.print("Comment will be ignored : "+t.image); 
+	}
+
+	| t = <COMMENTLINES>
+	{
+	System.out.println("Comment will be ignored : \n"+t.image+"Comment End"); 
+	}
+
+	| t = <NEWLINE> | <WHITESPACE> 
+	{
+	}
+
+	| t = <OTHERS>
+	{	
+	
+	System.out.println("ERROR :"+t.image+"!!!!!!!!!!!!");
+
+	}
+	
+	       
+  )*
+}
+
+
+
+ 
+
+

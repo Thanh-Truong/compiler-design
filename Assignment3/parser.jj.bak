@@ -1,0 +1,716 @@
+PARSER_BEGIN(SemanticAnalyser) 
+  
+import java.util.*;
+import java.io.*;  
+import java.lang.*;
+
+class SemanticAnalyser {
+  public static void main(String[] arg) 
+  throws ParseException, IOException {
+    if (arg.length != 1) {
+        System.out.println("Usage: SemanticAnalyser <input file name>");
+        System.exit(0);
+    }
+    InputStream is = new FileInputStream(arg[0]);
+
+
+    SemanticAnalyser parser = new SemanticAnalyser(is);
+    // check Semantic 
+    Node programNode = parser.Start();
+    programNode.print("");    
+    System.out.println("-------------------");
+    
+    boolean flag = false;
+    flag = Semantic.checkProgram(programNode);	
+    
+    if (flag) System.out.println("Check succeeded");
+    if (!flag) System.out.println("Check failed");
+
+  }
+}
+
+PARSER_END(SemanticAnalyser)
+
+
+TOKEN_MGR_DECLS : {static int commentNesting = 0;}
+
+// Skips NewLine, Tab, Space, Comment
+SKIP :
+{
+ 	<" ">
+	|<"\n" | "\r" | "\r\n" | "\t" | "\f">
+	|< "//" (~["\n"])* "\n">
+}
+// "if the end of the input is encountered when the token manager is looking for more of a token,
+// then a TokenMgrError is thrown" to check nested comments are properly paired and closed.
+
+MORE : {"/*" { commentNesting++; }: IN_COMMENT}
+
+<IN_COMMENT> MORE : 
+		{ "/*" { commentNesting++; }
+		| <~[]>
+		}
+<IN_COMMENT> SKIP :
+		{"*/" { commentNesting--;
+			if (commentNesting == 0)
+			{
+			SwitchTo(DEFAULT);
+			}
+		  }
+}
+
+// Keywords
+TOKEN   :   {<CHAR : "char">}
+TOKEN   :   {<ELSE : "else">}
+TOKEN   :   {<EXTERN : "extern">}
+TOKEN   :   {<IF : "if">}
+TOKEN   :   {<INT : "int">}
+TOKEN   :   {<RETURN : "return">}
+TOKEN   :   {<VOID : "void">}
+TOKEN   :   {<WHILE : "while">}
+
+// Tokens
+TOKEN   : {<INTEGER_CONSTANT : (<DIGIT>)+>}
+TOKEN   : {<DIGIT : (["0"-"9"])+ > }
+//TOKEN   : {< NUMBER : <DIGIT> | <DIGIT> "." <DIGIT> | <DIGIT> "." | "." <DIGIT>> }
+TOKEN   : {<IDENT : (<ALPHABET>)+ ((<ALPHABET>)|(<INTEGER_CONSTANT>))*>}
+TOKEN   : {<ALPHABET : (["a"-"z"]|["A"-"Z"])|("_")>}
+
+TOKEN   : {<NOTEQ  : "!=">}
+TOKEN   : {<NOT : "!">}
+TOKEN   : {<ANDAND : "&&">}
+TOKEN   : {<OROR  : "||">}
+TOKEN   : {<LPAREN : "(">}
+TOKEN   : {<RPAREN : ")">}
+TOKEN   : {<MUL : "*">}
+TOKEN   : {<PLUS : "+">}
+TOKEN   : {<COMMA : ",">}
+TOKEN   : {<MINUS :"-">}
+TOKEN   : {<DIV : "/">}
+TOKEN   : {<SEMI : ";">}
+TOKEN   : {<LTEQ : "<=">}
+TOKEN   : {<LT : "<">}
+TOKEN   : {<EQEQ : "==">}
+TOKEN   : {<EQ  : "=">}
+TOKEN   : {<GTEQ : ">=">}
+TOKEN   : {<GT  : ">">}
+TOKEN   : {<LBRACK : "[">}
+TOKEN   : {<RBRACK : "]">}
+TOKEN   : {<LBRACE : "{">}
+TOKEN   : {<RBRACE : "}">}
+
+TOKEN   : {<CHARACTER : ("'")((~[])|("\\")(~[])   )("'")>}
+TOKEN   : {<STRING : ("\"")(~[])+("\"")>}
+TOKEN   : {<OTHERS : ~[]>}
+
+
+
+Node Start() : 
+{
+    Node td;
+}
+{
+    td = //Expr()<EOF>
+    TopDec_List() <EOF>
+    {return td;}
+}
+
+
+
+Node TopDec_List():
+{
+	Node tdec;
+	Node tdec_list;
+	Node n;
+	
+}
+{
+	tdec = TopDec() tdec_list = TopDec_List()
+	{
+		n = new Node(Id.TOPDEC);
+		n.add(tdec);
+		n.addTree(tdec_list);
+		return n;
+	}
+	| {}
+	{
+		n = new Node(Id.EMPTY_STMNT);
+	 	return n; 
+	}	
+}
+
+Node TopDec() :
+{
+	Node n, ftype, id, fb;
+	Node formals;
+	Token t;
+}
+{
+	LOOKAHEAD(VarDec() <SEMI>)
+	n = VarDec() <SEMI>
+	{
+		return n;
+	}
+	|
+	ftype = Funtype() id = Identifier() <LPAREN> formals = Formals() <RPAREN> 
+	(
+		LOOKAHEAD(2)
+		<SEMI>
+		{
+		n = new Node(Id.EXTERN);
+		n.add(ftype);
+		n.add(id);
+		n.add(formals);
+		return n;
+		}
+
+		| fb = Funbody() 
+		{
+		n = new Node(Id.FUNC);
+		n.add(ftype);
+		n.add(id);
+		n.add(formals);
+		n.add(fb);
+		return n;
+		}
+	)
+
+}
+
+
+// I combined ScalarDec and ArrayDec to avoid making conflict and using LOOKAHEAD.
+Node VarDec() :
+{
+	Node typename, id, intCont;
+	Node n;
+}
+{
+	typename = TypeName() id = Identifier()
+	(
+		<LBRACK> intCont = IntegerLiteral() <RBRACK>
+		{
+			n = new Node(Id.ARR_TYPE); 
+			n.add(typename);
+			n.add(id);
+			n.add(intCont);
+			return n;
+		}
+
+		| {}
+		{
+			n = new Node(Id.SCALAR_TYPE);
+			n.add (typename);
+			n.add (id);
+			return n; 
+		}
+	)
+}
+
+
+Node TypeName() :
+{
+	Node n;
+	Token t;
+}
+{
+	t = <INT> 
+	{
+		n = new Node(Id.INT);
+		n.setPosition(Position.fromToken(t));
+		return n;
+	}
+	| t = <CHAR> 
+	{
+		n = new Node(Id.CHAR);
+		n.setPosition(Position.fromToken(t));
+		return n;
+	}
+}
+
+Node Funtype() :
+{
+	Node n;
+}
+{
+	n = TypeName() 
+	{
+		return n;
+	}	
+
+	| <VOID> 
+	{
+		n = new Node(Id.VOID);
+		return n;
+	}
+}
+
+Node Funbody() :
+{
+	Node l, stmts;
+	Node n;
+}
+{
+	<LBRACE> l = Locals() stmts = Stmts() <RBRACE>
+	{
+		n = new Node(Id.FUNCBODY);
+		n.add (l);
+		n.add(stmts);
+		return n;
+	}
+	
+	| <SEMI> 
+	{
+		return new Node(Id.EMPTY_STMNT);
+	}
+	
+}
+
+Node Formals() :
+{
+	Node n;
+}
+{
+	(<VOID> {n = new Node(Id.VOID);}
+	| n = Formal_List())
+	{
+		return n;
+	}	
+}
+
+Node Formal_List():
+{
+	Node formaldec, formal_list;
+	Node n;
+}
+{
+	formaldec = FormalDec()
+
+	(
+		<COMMA> formal_list = Formal_List()
+		{
+		n = new Node(Id.FORMAL);
+		n.add(formaldec);
+		n.addTree(formal_list);
+		return n;
+		}
+	
+		| {}
+		{
+		n = new Node(Id.FORMAL);
+		n.add(formaldec);
+		return n;
+		}
+	)
+	
+	 
+}
+
+
+// Cause I deleted scalardec, I modified this one, too.
+Node FormalDec() :
+{
+	Node typename, id;
+	Node n;
+}
+{
+	typename = TypeName() id = Identifier() 
+	(
+		<LBRACK> <RBRACK>
+		{
+			n = new Node(Id.ARR_TYPE);
+			n.add(typename);
+			n.add(id);
+			return n;
+		}
+		| {}
+		{
+			n = new Node(Id.SCALAR_TYPE);
+			n.add(typename);
+			n.add(id);
+			return n;
+
+		}
+	)
+}
+
+	
+
+Node Locals() :
+{
+	Node vardec, locals;
+	Node n;
+}
+{
+	
+	vardec = VarDec() <SEMI> locals = Locals()
+	{
+		n = new Node(Id.VARDEC);
+		n.add(vardec);
+		n.addTree(locals);
+		return n;
+	}
+
+	| {}
+	{n = new Node (Id.EMPTY_STMNT); return n;}
+	
+		
+}
+
+
+Node Stmt() :
+{
+	Node expr, cond, stmt, else_part;
+	Node n;
+}
+{
+	expr = Expr() <SEMI> {return expr;}
+	| <RETURN> 
+		(
+		expr = Expr() <SEMI> 
+		{
+		n = new Node (Id.RETURN);
+		n.add (expr);
+		return n;
+		}
+
+		| <SEMI> 
+		{
+		n = new Node (Id.RETURN);
+		return n;
+		}
+		)
+	| <WHILE> cond = Exp_In_Paren() stmt = Stmt()
+	{
+			n = new Node (Id.WHILE);
+			n.add (cond);
+			n.add (stmt);
+			return n;
+	}
+
+	| <IF> cond = Exp_In_Paren() stmt = Stmt() else_part = Else_part()
+	{
+			n = new Node (Id.IF);
+			n.add (cond);
+			n.add (stmt);
+			n.add (else_part);
+			return n;
+	}
+
+	| <LBRACE> stmt = Stmts() <RBRACE> {return stmt;}
+	| <SEMI> {n = new Node (Id.EMPTY_STMNT); return n;}
+
+}
+
+Node Stmts() :
+{
+	Node stmt;
+	Node stmts;
+	Node n;
+}
+{
+	stmt = Stmt() stmts = Stmts() 
+	{
+		n = new Node(Id.STMNT);
+		n.add(stmt);
+		n.addTree(stmts);
+		return n;
+	}
+	| {}
+	{
+		n = new Node(Id.EMPTY_STMNT);
+		return n;
+	}
+}
+
+Node Else_part() :
+{
+	Node stmt, n;
+}
+{
+	<ELSE> stmt = Stmt() {return stmt;}
+	| {}  {n = new Node (Id.EMPTY_STMNT); return n;}
+	
+
+}
+
+Node Expr_list () :
+{
+	Node e1, e2;
+	Node expr_list;
+}
+{
+	e1 = Expr() 
+	(
+	<COMMA> e2 = Expr_list() 
+	{
+		expr_list = new Node(Id.EXPR);
+		expr_list.add(e1);
+		expr_list.addTree(e2);
+		
+		return expr_list;
+	}
+
+	|{} {
+		expr_list = new Node(Id.EXPR);
+		expr_list.add(e1);
+		return expr_list;
+		}
+	)
+		
+}
+
+Node Actuals () :
+{
+	Node expr_list;
+	Node n;
+}
+{
+	expr_list = Expr_list() {return expr_list;}
+	| {} {return new Node(Id.EMPTY_STMNT);}
+}
+
+
+
+
+// Indentifier and Integer Constant has the highest priority.
+//So we don't need to touch this.
+
+Node Identifier() :
+{
+	Token t;
+	Node n;
+}
+{
+  t = <IDENT>
+	{
+		n = new IdentifierNode(t.image, Position.fromToken(t));
+		return n;
+	}
+}
+
+Node IntegerLiteral() :
+{
+	Token t;
+	Node n;
+}
+{
+ t = <INTEGER_CONSTANT>
+	{
+		n = new IntegerLiteralNode(Integer.parseInt(t.image), Position.fromToken(t));
+		return n;
+	}
+}
+
+Node Character() :
+{
+	Token t;
+	Node n;
+}
+{
+ t = <CHARACTER>
+	{
+		System.out.printf("AAA");
+		n = new Node(Id.CHAR);
+		return n;
+	}
+}
+
+//we can use this for both Condition and High precedence expression.
+Node Exp_In_Paren() :
+{
+	Node t;
+}
+{
+	<LPAREN> t = Expr() <RPAREN> {return t;}
+}
+
+//Priority 16
+Node Term () :
+{
+	Node t1, t2, t3;
+	Node id;
+}
+{
+	 t1 = Character() {return t1;}
+	|  t1 = IntegerLiteral()  {return t1;}	
+	| t1 = Exp_In_Paren()  {return t1;}
+	| t1 = Identifier()
+	(
+		<LBRACK> t2 = Expr() <RBRACK> {t3 = new Node (Id.ARRAY); t3.add(t1); t3.add(t2); return t3;}
+		| <LPAREN> t2 = Actuals() <RPAREN> {t3 = new Node (Id.FCALL); t3.add(t1); t3.add(t2); return t3;}
+		| { return t1;}
+		
+	)
+}
+
+//Priority 14
+Node Unary() :
+{
+	Node inside, outside;
+}
+{ 
+	<MINUS> (inside = Term() | inside = Unary())
+	{
+		outside = new UnaryNode (Unop.NEG, inside);
+		return outside;
+	}
+| 
+	<NOT> (inside = Term() | inside = Unary())
+	{
+		outside = new UnaryNode (Unop.NOT, inside);
+		return outside;
+	}
+}
+
+Node Priority14_Expr() :
+{
+	Node n;
+}
+{
+	(
+	(
+	n = Term()
+	| n = Unary()
+	)
+	{return n;}
+	)
+}
+
+
+// *, /
+Node Priority13L_Expr() :
+{
+	Node t1, exp; 
+}
+{
+	t1 = Priority14_Expr() exp = Priority13L_Expr2(t1) {return exp;}
+}
+
+Node Priority13L_Expr2 (Node t1) :
+{
+	Node t2, t3, exp;
+}
+{
+	<MUL> t2 = Priority14_Expr() { t3 = new BinaryNode (Binop.MUL, t1, t2); } exp = Priority13L_Expr2(t3) { return exp;}
+	| <DIV> t2 = Priority14_Expr() { t3 = new BinaryNode (Binop.DIV, t1, t2); } exp = Priority13L_Expr2(t3) { return exp;}
+	| {return t1;}
+}
+
+// + , -
+Node Priority12L_Expr() :
+{
+	Node t1, exp; 
+}
+{
+	t1 = Priority13L_Expr() exp = Priority12L_Expr2(t1) {return exp;}
+}
+
+Node Priority12L_Expr2 (Node t1) :
+{
+	Node t2, t3, exp;
+}
+{
+	<PLUS> t2 = Priority13L_Expr() { t3 = new BinaryNode (Binop.PLUS, t1, t2); } exp = Priority12L_Expr2(t3) { return exp;}
+	| <MINUS> t2 = Priority13L_Expr() { t3 = new BinaryNode (Binop.MINUS, t1, t2); } exp = Priority12L_Expr2(t3) { return exp;}
+	| {return t1;}
+}
+
+// <, >, <=, >=
+Node Priority10L_Expr() :
+{
+	Node t1, exp; 
+}
+{
+	t1 = Priority12L_Expr() exp = Priority10L_Expr2(t1) {return exp;}
+}
+
+Node Priority10L_Expr2 (Node t1) :
+{
+	Node t2, t3, exp;
+}
+{
+	<LTEQ> t2 = Priority12L_Expr() { t3 = new BinaryNode (Binop.LTEQ, t1, t2); } exp = Priority10L_Expr2(t3) { return exp;}
+	| <LT> t2 = Priority12L_Expr() { t3 = new BinaryNode (Binop.LT, t1, t2); } exp = Priority10L_Expr2(t3) { return exp;}
+	| <GTEQ> t2 = Priority12L_Expr() { t3 = new BinaryNode (Binop.GTEQ, t1, t2); } exp = Priority10L_Expr2(t3) { return exp;}
+	| <GT> t2 = Priority12L_Expr() { t3 = new BinaryNode (Binop.GT, t1, t2); } exp = Priority10L_Expr2(t3) { return exp;}
+	| {return t1;}
+}
+
+// ==, !-
+Node Priority9L_Expr() :
+{
+	Node t1, exp; 
+}
+{
+	t1 = Priority10L_Expr() exp = Priority9L_Expr2(t1) {return exp;}
+}
+
+Node Priority9L_Expr2 (Node t1) :
+{
+	Node t2, t3, exp;
+}
+{
+	<EQEQ> t2 = Priority10L_Expr() { t3 = new BinaryNode (Binop.EQ, t1, t2); } exp = Priority9L_Expr2(t3) { return exp;}
+	| <NOTEQ> t2 = Priority10L_Expr() { t3 = new BinaryNode (Binop.NE, t1, t2); } exp = Priority9L_Expr2(t3) { return exp;}
+	| {return t1;}
+}
+
+// &&
+Node Priority5L_Expr() :
+{
+	Node t1, exp; 
+}
+{
+	t1 = Priority9L_Expr() exp = Priority5L_Expr2(t1) {return exp;}
+}
+
+Node Priority5L_Expr2 (Node t1) :
+{
+	Node t2, t3, exp;
+}
+{
+	<ANDAND> t2 = Priority9L_Expr() { t3 = new BinaryNode (Binop.ANDAND, t1, t2); } exp = Priority5L_Expr2(t3) { return exp;}
+	| {return t1;}
+}
+
+// ||
+Node Priority4L_Expr() :
+{
+	Node t1, exp; 
+}
+{
+	t1 = Priority5L_Expr() exp = Priority4L_Expr2(t1) {return exp;}
+}
+
+Node Priority4L_Expr2 (Node t1) :
+{
+	Node t2, t3, exp;
+}
+{
+	<OROR> t2 = Priority5L_Expr() { t3 = new BinaryNode (Binop.OROR, t1, t2); } exp = Priority4L_Expr2(t3) { return exp;}
+	| {return t1;}
+}
+
+// =
+// E -> T = E | T  
+Node Priority2R_Expr() :
+{
+	Node t1, t2, t3; 
+}
+{
+	t1 = Priority4L_Expr() 
+	( 
+	<EQ> t2 = Priority2R_Expr() {t3 = new Node (Id.ASSIGN); t3.add(t1); t3.add(t2); return t3;}
+	| {return t1;}
+	)
+	
+}
+
+Node Expr() :
+{
+	Node t;
+}
+{
+	t = Priority2R_Expr()
+	{return t;}
+}
